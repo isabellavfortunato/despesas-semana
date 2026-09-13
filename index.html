@@ -196,6 +196,7 @@
 
   <div class="barra">
     <button class="btnAcao forte" id="btnCalc">Calculadora de pagamento</button>
+    <button class="btnAcao" id="btnRelatorio">Relatório do mês</button>
     <button class="btnAcao" id="btnNova">Adicionar conta</button>
     <button class="btnAcao" id="btnReset">Restaurar contas originais</button>
   </div>
@@ -234,6 +235,22 @@
     <button class="btnAcao forte" id="fAdd" style="height:34px;">Adicionar</button>
   </div>
 </div>
+
+  <div class="calcOverlay" id="relOverlay">
+    <div class="calcModal">
+      <div class="calcHead">
+        <h2>Relatório de despesas</h2>
+        <button class="calcFechX" id="relFechX" title="Fechar">&times;</button>
+      </div>
+      <div class="calcTopo">
+        <div class="calcSaldo"><label id="relMes"></label></div>
+      </div>
+      <div class="calcLista" id="relLista"></div>
+      <div class="calcRodape">
+        <button class="btnAcao forte" id="relCopiar" style="width:100%;">Copiar relatório</button>
+      </div>
+    </div>
+  </div>
 
   <div class="calcOverlay" id="calcOverlay">
     <div class="calcModal">
@@ -898,6 +915,109 @@
     renderCalc();
   });
   document.getElementById("calcLimpar").addEventListener("click", function(){ calcSel = {}; renderCalc(); });
+
+  // ---- Relatório do mês (para atualizar o Google Calendar) ----
+  var relTextoAtual = "";
+  function itensDoMes(ano, mes){
+    var ult = ultimoDia(ano, mes), ym = chaveMes(ano, mes);
+    var lista = [];
+    contas.forEach(function(c){
+      if(c.repete === false){
+        var dt = fromISO(c.data); if(!dt) return;
+        if(dt.getFullYear()===ano && dt.getMonth()===mes){
+          lista.push({ nome:c.nome, dia:dt.getDate(), valor:c.valor, tipo:c.tipo, status:(c.status||"aberta"), repete:false });
+        }
+      } else {
+        if(c.removidos && c.removidos.indexOf(ym) !== -1) return;
+        var d = Math.min(c.dia, ult);
+        var stt = (c.statusMes && c.statusMes[ym]) || "aberta";
+        lista.push({ nome:c.nome, dia:d, valor:c.valor, tipo:c.tipo, status:stt, repete:true });
+      }
+    });
+    lista.sort(function(a,b){ return a.dia - b.dia; });
+    return lista;
+  }
+  var GRUPOS_REL = [{ r:true, tela:"Contas mensais (repetem todo mês)", texto:"CONTAS MENSAIS (repetem todo mês)" },
+                    { r:false, tela:"Contas únicas (só neste mês)", texto:"CONTAS ÚNICAS (só neste mês)" }];
+  function montarTextoRelatorio(ano, mes, lista){
+    var linhas = ["Relatório de despesas — " + nomeMesAno(ano, mes), ""];
+    GRUPOS_REL.forEach(function(g){
+      var doGrupo = lista.filter(function(it){ return it.repete === g.r; });
+      if(doGrupo.length === 0) return;
+      linhas.push(g.texto);
+      ["empresa","pessoal"].forEach(function(tp){
+        var itens = doGrupo.filter(function(it){ return it.tipo===tp; });
+        if(itens.length===0) return;
+        linhas.push("  " + (tp==="empresa"?"Empresa":"Pessoal") + ":");
+        itens.forEach(function(it){
+          var quando = g.r ? ("todo dia "+it.dia) : (pad2(it.dia)+"/"+pad2(mes+1)+"/"+ano);
+          linhas.push("    " + quando + " — " + it.nome + " — " +
+            (parseValor(it.valor)>0 ? "R$ "+it.valor : "(a preencher)") +
+            (it.status!=="aberta" ? "  ["+it.status+"]" : ""));
+        });
+      });
+      linhas.push("");
+    });
+    return linhas.join("\n");
+  }
+  function abrirRelatorio(){
+    var ref = addDias(inicioSemana, 3);
+    var ano = ref.getFullYear(), mes = ref.getMonth();
+    document.getElementById("relMes").textContent = "Mês: " + nomeMesAno(ano, mes);
+    var lista = itensDoMes(ano, mes);
+    var box = document.getElementById("relLista"); box.innerHTML = "";
+    if(lista.length === 0){
+      var vazio = document.createElement("div");
+      vazio.style.cssText = "padding:24px 8px;text-align:center;color:var(--cinzaTx);font-size:14px;";
+      vazio.textContent = "Nenhuma despesa neste mês.";
+      box.appendChild(vazio);
+    }
+    GRUPOS_REL.forEach(function(g){
+      var doGrupo = lista.filter(function(it){ return it.repete === g.r; });
+      if(doGrupo.length === 0) return;
+      var gh = document.createElement("div");
+      gh.textContent = g.tela;
+      gh.style.cssText = "font-family:var(--serif);font-weight:700;color:var(--vinho);margin:12px 2px 6px;font-size:15px;border-bottom:1px solid rgba(114,16,53,.2);padding-bottom:4px;";
+      box.appendChild(gh);
+      ["empresa","pessoal"].forEach(function(tp){
+        var itens = doGrupo.filter(function(it){ return it.tipo===tp; });
+        if(itens.length===0) return;
+        var th = document.createElement("div");
+        th.textContent = (tp==="empresa"?"Empresa":"Pessoal");
+        th.style.cssText = "font-weight:700;color:"+(tp==="empresa"?"#a6280c":"#c14b21")+";margin:6px 2px 4px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;";
+        box.appendChild(th);
+        itens.forEach(function(it){
+          var row = document.createElement("div");
+          row.style.cssText = "display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:8px;background:#fbf8f3;border:1px solid rgba(11,18,31,.08);margin-bottom:4px;font-size:13px;";
+          var esq = document.createElement("span");
+          var quando = g.r ? ("todo dia "+it.dia) : (pad2(it.dia)+"/"+pad2(mes+1));
+          esq.textContent = quando + "  " + it.nome + (it.status!=="aberta"?"  ("+it.status+")":"");
+          var dir = document.createElement("span");
+          dir.style.cssText = "font-family:var(--serif);font-weight:700;white-space:nowrap;";
+          dir.textContent = parseValor(it.valor)>0 ? "R$ "+it.valor : "sem valor";
+          row.appendChild(esq); row.appendChild(dir); box.appendChild(row);
+        });
+      });
+    });
+    relTextoAtual = montarTextoRelatorio(ano, mes, lista);
+    document.getElementById("relOverlay").classList.add("aberto");
+  }
+  function copiarRelatorio(){
+    var txt = relTextoAtual || "";
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ toast("Relatório copiado. Cole na conversa com o Claude."); }).catch(function(){ fallbackCopiar(txt); });
+    } else { fallbackCopiar(txt); }
+  }
+  function fallbackCopiar(txt){
+    var ta = document.createElement("textarea"); ta.value = txt;
+    ta.style.cssText = "position:fixed;left:-9999px;top:0;"; document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand("copy"); toast("Relatório copiado."); }catch(e){ toast("Não consegui copiar sozinho, selecione o texto manualmente."); }
+    ta.remove();
+  }
+  document.getElementById("btnRelatorio").addEventListener("click", abrirRelatorio);
+  document.getElementById("relFechX").addEventListener("click", function(){ document.getElementById("relOverlay").classList.remove("aberto"); });
+  document.getElementById("relOverlay").addEventListener("click", function(e){ if(e.target===this) this.classList.remove("aberto"); });
+  document.getElementById("relCopiar").addEventListener("click", copiarRelatorio);
 
   if(NUVEM){ iniciarNuvem(); } else { atualizarBarra(); localInit(); }
 })();
