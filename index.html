@@ -13,7 +13,7 @@
   :root{
     --creme:#e9eef5;
     --vermelho:#011c6b;
-    --laranja:#14cbd7;
+    --laranja:#89a5c0;
     --vinho:#0a6685;
     --escuro:#0b2140;
     --cinza:#b9c3d0;
@@ -479,7 +479,7 @@
   }
 
   function criaConta(c, dataCol){
-    var cor = c.tipo === "empresa" ? "#011c6b" : "#14cbd7";
+    var cor = c.tipo === "empresa" ? "#011c6b" : "#89a5c0";
     var st = statusDe(c, dataCol);
     var wrap = document.createElement("div");
     wrap.className = "conta " + c.tipo + (st==="paga" ? " paga" : "") + (st==="pulada" ? " pulada" : "");
@@ -678,7 +678,7 @@
         comecou = true;
         fantasma = document.createElement("div");
         fantasma.className = "fantasma";
-        fantasma.style.background = conta.tipo === "empresa" ? "#011c6b" : "#14cbd7";
+        fantasma.style.background = conta.tipo === "empresa" ? "#011c6b" : "#89a5c0";
         fantasma.textContent = conta.nome;
         document.body.appendChild(fantasma);
       }
