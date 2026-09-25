@@ -154,8 +154,8 @@
   .delSub{ font-size:13px; color:var(--cinzaTx); margin-bottom:14px; line-height:1.5; }
   .delAcoes{ display:flex; flex-direction:column; gap:8px; }
   .delAcoes .btnAcao{ width:100%; }
-  .moverDia{ display:flex; gap:2px; flex-shrink:0; }
-  .setaDia{ width:16px; height:20px; border:none; background:var(--ctrl); color:var(--fg); font-size:14px; line-height:1; cursor:pointer; border-radius:5px; padding:0; font-weight:700; }
+  .moverDia{ display:grid; grid-template-columns:repeat(2, 16px); gap:2px; flex-shrink:0; }
+  .setaDia{ width:16px; height:17px; border:none; background:var(--ctrl); color:var(--fg); font-size:13px; line-height:1; cursor:pointer; border-radius:5px; padding:0; font-weight:700; }
   .setaDia:active{ background:rgba(242,247,251,.42); }
   .conta.pulada .setaDia{ color:#7d858c; background:rgba(25,38,51,.08); }
 </style>
@@ -497,7 +497,14 @@
     var bProx = document.createElement("button");
     bProx.className = "setaDia"; bProx.textContent = "›"; bProx.title = "Mover para o próximo dia";
     bProx.addEventListener("click", function(){ nudge(c, dataCol, 1); });
+    var bCima = document.createElement("button");
+    bCima.className = "setaDia"; bCima.textContent = "↑"; bCima.title = "Subir na lista do dia";
+    bCima.addEventListener("click", function(){ moverVertical(c, dataCol, -1); });
+    var bBaixo = document.createElement("button");
+    bBaixo.className = "setaDia"; bBaixo.textContent = "↓"; bBaixo.title = "Descer na lista do dia";
+    bBaixo.addEventListener("click", function(){ moverVertical(c, dataCol, 1); });
     mover.appendChild(bAnt); mover.appendChild(bProx);
+    mover.appendChild(bCima); mover.appendChild(bBaixo);
     topo.appendChild(mover);
 
     var marca = document.createElement("button");
@@ -638,6 +645,16 @@
     conta.removidos = conta.removidos || [];
     if(conta.removidos.indexOf(ym) === -1) conta.removidos.push(ym);
     contas.push({ id:"c"+Date.now()+Math.floor(Math.random()*1000), nome:conta.nome, tipo:conta.tipo, valor:conta.valor, status:"aberta", repete:false, data:chaveDia(destino) });
+  }
+  function moverVertical(conta, dataCol, dir){
+    var lista = contasDoDia(dataCol);
+    var i = lista.indexOf(conta), j = i + dir;
+    if(i < 0 || j < 0 || j >= lista.length) return;
+    var vizinho = lista[j];
+    var gi = contas.indexOf(conta), gj = contas.indexOf(vizinho);
+    if(gi < 0 || gj < 0) return;
+    var tmp = contas[gi]; contas[gi] = contas[gj]; contas[gj] = tmp;
+    salvar(); render();
   }
   function nudge(conta, dataCol, delta){
     var destino = addDias(dataCol, delta);
