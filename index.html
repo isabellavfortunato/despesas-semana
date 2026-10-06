@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Despesas da semana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,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">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -11,24 +14,26 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root{
-    --creme:#e8ecf1;
-    --vermelho:#0f2133;
-    --laranja:#89a5c0;
-    --vinho:#3e4c59;
-    --escuro:#192633;
-    --cinza:#ccd1d6;
-    --cinzaTx:#7d858c;
-    --carta:#f7fafd;
-    --fg:#f2f7fb;
-    --ctrl:rgba(242,247,251,.22);
-    --serif:"Cambria", Georgia, "Times New Roman", serif;
+    --creme:#f4f2ec;
+    --vermelho:#10607a;
+    --laranja:#c2693f;
+    --vinho:#2f3a44;
+    --escuro:#232b33;
+    --cinza:#e4e7ea;
+    --cinzaTx:#79838d;
+    --carta:#ffffff;
+    --tintaE:#eef5f8;
+    --tintaP:#faf1ea;
+    --fg:#2a333c;
+    --ctrl:rgba(42,51,60,.14);
+    --serif:"Inter","Inter var",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
   *{ box-sizing:border-box; }
   body{
     margin:0;
     background:var(--creme);
     color:var(--escuro);
-    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-family:var(--serif);
     padding:20px 16px 48px;
   }
   .wrap{ max-width:1400px; margin:0 auto; }
@@ -70,11 +75,11 @@
   .rodapeDia .rot{ font-size:11px; color:var(--cinzaTx); text-transform:uppercase; letter-spacing:.06em; }
   .rodapeDia .val{ font-family:var(--serif); font-weight:700; font-size:15px; color:var(--vinho); }
 
-  .conta{ border-radius:9px; padding:7px 8px; box-shadow:0 1px 2px rgba(25,38,51,.18); }
-  .conta.empresa{ background:var(--vermelho); }
-  .conta.pessoal{ background:var(--laranja); }
-  .conta.pulada{ background:var(--cinza); }
-  .conta.paga{ opacity:.5; }
+  .conta{ border-radius:10px; padding:8px 9px; background:var(--carta); border:1px solid rgba(35,43,51,.10); border-left:4px solid var(--cinzaTx); box-shadow:0 1px 3px rgba(35,43,51,.10); }
+  .conta.empresa{ background:var(--tintaE); border-left-color:var(--vermelho); }
+  .conta.pessoal{ background:var(--tintaP); border-left-color:var(--laranja); }
+  .conta.pulada{ background:var(--cinza); border-left-color:var(--cinzaTx); }
+  .conta.paga{ opacity:.55; }
   .linhaTopo{ display:flex; align-items:flex-start; gap:6px; }
   .alca{ touch-action:none; cursor:grab; padding:2px 1px; flex-shrink:0; display:flex; align-items:center; }
   .marca{ flex-shrink:0; width:16px; height:16px; margin-top:1px; border-radius:50%; border:2px solid var(--fg); background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
@@ -92,7 +97,7 @@
   .linhaValor{ display:flex; align-items:center; gap:4px; margin-top:6px; margin-left:2px; }
   .linhaValor .cifrao{ font-size:12px; color:var(--fg); opacity:.9; }
   .conta.pulada .linhaValor .cifrao{ color:var(--cinzaTx); }
-  .linhaValor input{ flex:1; width:100%; min-width:0; background:rgba(242,247,251,.92); border:none; border-radius:5px; padding:3px 6px; font-size:13px; font-weight:600; color:var(--escuro); font-family:var(--serif); outline:none; }
+  .linhaValor input{ flex:1; width:100%; min-width:0; background:#ffffff; border:1px solid rgba(35,43,51,.16); border-radius:5px; padding:3px 6px; font-size:13px; font-weight:600; color:var(--escuro); font-family:var(--serif); outline:none; }
 
   .fantasma{ position:fixed; pointer-events:none; z-index:9999; color:#fff8f2; padding:6px 12px; border-radius:8px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(25,38,51,.35); white-space:nowrap; transform:translate(-50%,-120%); }
 
@@ -135,7 +140,7 @@
   .calcRow.sel .calcCheck{ background:#3e4c59; border-color:#3e4c59; }
   .calcDia{ font-family:var(--serif); font-weight:700; font-size:14px; color:var(--escuro); width:26px; text-align:center; flex-shrink:0; }
   .calcTag{ width:20px; height:20px; border-radius:5px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#f2f7fb; }
-  .tagP{ background:var(--laranja); color:#192633; }
+  .tagP{ background:var(--laranja); color:#fff; }
   .tagE{ background:var(--vermelho); }
   .tagAtraso{ background:#c62a12; }
   .calcNome{ flex:1; font-size:13px; color:var(--escuro); }
@@ -479,12 +484,12 @@
   }
 
   function criaConta(c, dataCol){
-    var cor = c.tipo === "empresa" ? "#0f2133" : "#89a5c0";
+    var cor = c.tipo === "empresa" ? "#10607a" : "#c2693f";
     var st = statusDe(c, dataCol);
     var wrap = document.createElement("div");
     wrap.className = "conta " + c.tipo + (st==="paga" ? " paga" : "") + (st==="pulada" ? " pulada" : "");
-    wrap.style.setProperty("--fg", c.tipo === "empresa" ? "#f2f7fb" : "#192633");
-    wrap.style.setProperty("--ctrl", c.tipo === "empresa" ? "rgba(242,247,251,.22)" : "rgba(25,38,51,.16)");
+    wrap.style.setProperty("--fg", "#2a333c");
+    wrap.style.setProperty("--ctrl", "rgba(42,51,60,.14)");
 
     var topo = document.createElement("div");
     topo.className = "linhaTopo";
@@ -695,7 +700,7 @@
         comecou = true;
         fantasma = document.createElement("div");
         fantasma.className = "fantasma";
-        fantasma.style.background = conta.tipo === "empresa" ? "#0f2133" : "#89a5c0";
+        fantasma.style.background = conta.tipo === "empresa" ? "#10607a" : "#c2693f";
         fantasma.textContent = conta.nome;
         document.body.appendChild(fantasma);
       }
@@ -1005,7 +1010,7 @@
         if(itens.length===0) return;
         var th = document.createElement("div");
         th.textContent = (tp==="empresa"?"Empresa":"Pessoal");
-        th.style.cssText = "font-weight:700;color:"+(tp==="empresa"?"#0f2133":"#3e4c59")+";margin:6px 2px 4px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;";
+        th.style.cssText = "font-weight:700;color:"+(tp==="empresa"?"#10607a":"#c2693f")+";margin:6px 2px 4px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;";
         box.appendChild(th);
         itens.forEach(function(it){
           var row = document.createElement("div");
