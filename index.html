@@ -133,6 +133,11 @@
   .calcSaldo input{ height:38px; border:1px solid rgba(25,38,51,.2); border-radius:8px; padding:0 10px; font-size:15px; font-family:var(--serif); color:var(--escuro); background:#fff; }
   .calcAtalhos{ display:flex; flex-wrap:wrap; gap:6px; }
   .calcAtalho{ height:32px; padding:0 12px; border-radius:16px; border:1px solid rgba(62,76,89,.3); background:#fff; color:var(--vinho); font-size:12px; font-weight:600; cursor:pointer; }
+  .relMesChip{ height:30px; padding:0 12px; border-radius:16px; border:1px solid rgba(62,76,89,.3); background:#fff; color:var(--vinho); font-size:12px; font-weight:600; cursor:pointer; }
+  .relMesChip.sel{ background:var(--vermelho); color:#fff; border-color:var(--vermelho); }
+  .btnTodosMeses{ margin-top:5px; margin-left:2px; background:transparent; border:none; color:var(--fg); opacity:.6; font-size:11px; cursor:pointer; padding:1px 0; text-decoration:underline; font-family:var(--serif); }
+  .btnTodosMeses:hover{ opacity:1; }
+  .conta.pulada .btnTodosMeses{ color:var(--cinzaTx); }
   .calcLista{ flex:1; overflow-y:auto; padding:6px 12px 12px; display:flex; flex-direction:column; gap:6px; }
   .calcRow{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:#f7fafd; border:1px solid rgba(25,38,51,.08); cursor:pointer; }
   .calcRow.sel{ background:rgba(62,76,89,.18); border-color:#3e4c59; }
@@ -255,7 +260,13 @@
         <button class="calcFechX" id="relFechX" title="Fechar">&times;</button>
       </div>
       <div class="calcTopo">
-        <div class="calcSaldo"><label id="relMes"></label></div>
+        <div class="calcAtalhos">
+          <button class="calcAtalho" id="relEste">Este mês</button>
+          <button class="calcAtalho" id="rel3">Últimos 3 meses</button>
+          <button class="calcAtalho" id="rel6">Últimos 6 meses</button>
+          <button class="calcAtalho" id="relLimpar">Limpar</button>
+        </div>
+        <div id="relMeses" style="display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto;padding:2px 0;"></div>
       </div>
       <div class="calcLista" id="relLista"></div>
       <div class="calcRodape">
@@ -358,6 +369,7 @@
       if(c.repete){
         if(!c.removidos){ c.removidos = []; }
         if(!c.statusMes){ c.statusMes = {}; }
+        if(!c.valorMes){ c.valorMes = {}; }
         if(c.status && c.status !== "aberta"){ c.statusMes[mesAtual] = c.status; }
         if("status" in c){ delete c.status; }
       } else {
@@ -418,6 +430,23 @@
     c.statusMes = c.statusMes || {};
     if(novo === "aberta"){ delete c.statusMes[ym]; } else { c.statusMes[ym] = novo; }
   }
+  function valorDe(c, data){
+    if(c.repete === false){ return c.valor || ""; }
+    var ym = chaveMes(data.getFullYear(), data.getMonth());
+    if(c.valorMes && c.valorMes[ym] != null){ return c.valorMes[ym]; }
+    return c.valor || "";
+  }
+  function valorDeYm(c, ym){
+    if(c.repete === false){ return c.valor || ""; }
+    if(c.valorMes && c.valorMes[ym] != null){ return c.valorMes[ym]; }
+    return c.valor || "";
+  }
+  function definirValor(c, data, novo){
+    if(c.repete === false){ c.valor = novo; return; }
+    var ym = chaveMes(data.getFullYear(), data.getMonth());
+    c.valorMes = c.valorMes || {};
+    c.valorMes[ym] = novo;
+  }
 
   var contas = [];
   var inicioSemana = segundaDaSemana(new Date());
@@ -447,7 +476,7 @@
       var d = refDias[i];
       var td = 0;
       contasDoDia(d).forEach(function(c){
-        var st = statusDe(c, d), v = parseValor(c.valor);
+        var st = statusDe(c, d), v = parseValor(valorDe(c, d));
         if(st === "aberta"){ td += v; if(c.tipo==="empresa") e += v; else p += v; }
         else if(st === "paga"){ pago += v; }
       });
@@ -576,14 +605,30 @@
     linha.className = "linhaValor";
     var cif = document.createElement("span"); cif.className = "cifrao"; cif.textContent = "R$";
     var input = document.createElement("input");
-    input.type = "text"; input.inputMode = "decimal"; input.value = c.valor; input.placeholder = "preencher";
-    input.addEventListener("input", function(){ c.valor = input.value; salvar(); atualizarTotais(); });
+    input.type = "text"; input.inputMode = "decimal"; input.value = valorDe(c, dataCol); input.placeholder = "preencher";
+    input.addEventListener("input", function(){ definirValor(c, dataCol, input.value); salvar(); atualizarTotais(); });
     input.addEventListener("blur", function(){
-      c.valor = c.valor.trim() ? formatValor(parseValor(c.valor)) : "";
-      input.value = c.valor; salvar(); atualizarTotais(); aplicarPendente();
+      var fmt = input.value.trim() ? formatValor(parseValor(input.value)) : "";
+      definirValor(c, dataCol, fmt);
+      input.value = fmt; salvar(); atualizarTotais(); aplicarPendente();
     });
     linha.appendChild(cif); linha.appendChild(input);
     wrap.appendChild(linha);
+
+    if(c.repete !== false){
+      var btnTodos = document.createElement("button");
+      btnTodos.className = "btnTodosMeses";
+      btnTodos.textContent = "aplicar a todos os meses";
+      btnTodos.addEventListener("click", function(){
+        var v = valorDe(c, dataCol);
+        if(!v || !v.trim()){ toast("Preencha um valor primeiro."); return; }
+        if(!confirm('Usar R$ ' + v + ' em "' + c.nome + '" em todos os meses? Isso substitui os valores que você tiver colocado mês a mês nessa conta.')) return;
+        c.valor = formatValor(parseValor(v));
+        c.valorMes = {};
+        salvar(); render(); toast('"' + c.nome + '" agora usa R$ ' + c.valor + ' em todos os meses.');
+      });
+      wrap.appendChild(btnTodos);
+    }
 
     return wrap;
   }
@@ -654,7 +699,7 @@
     var ym = chaveMes(dataOrigem.getFullYear(), dataOrigem.getMonth());
     conta.removidos = conta.removidos || [];
     if(conta.removidos.indexOf(ym) === -1) conta.removidos.push(ym);
-    contas.push({ id:"c"+Date.now()+Math.floor(Math.random()*1000), nome:conta.nome, tipo:conta.tipo, valor:conta.valor, status:"aberta", repete:false, data:chaveDia(destino) });
+    contas.push({ id:"c"+Date.now()+Math.floor(Math.random()*1000), nome:conta.nome, tipo:conta.tipo, valor:valorDe(conta, dataOrigem), status:statusDe(conta, dataOrigem), repete:false, data:chaveDia(destino) });
   }
   function moverVertical(conta, dataCol, dir){
     var lista = contasDoDia(dataCol);
@@ -901,7 +946,7 @@
         if(c.removidos && c.removidos.indexOf(ym) !== -1) return;
         if(((c.statusMes && c.statusMes[ym]) || "aberta") !== "aberta") return;
         var d = Math.min(c.dia, ult); var venc = new Date(ano, mes, d); venc.setHours(0,0,0,0);
-        lista.push({ id:c.id, nome:c.nome, dia:d, valor:parseValor(c.valor), tipo:c.tipo, atrasada: venc < hoje });
+        lista.push({ id:c.id, nome:c.nome, dia:d, valor:parseValor(valorDeYm(c, ym)), tipo:c.tipo, atrasada: venc < hoje });
       }
     });
     lista.sort(function(a,b){ return a.dia - b.dia; });
@@ -989,7 +1034,7 @@
         if(c.removidos && c.removidos.indexOf(ym) !== -1) return;
         var d = Math.min(c.dia, ult);
         var stt = (c.statusMes && c.statusMes[ym]) || "aberta";
-        lista.push({ nome:c.nome, dia:d, valor:c.valor, tipo:c.tipo, status:stt, repete:true });
+        lista.push({ nome:c.nome, dia:d, valor:valorDeYm(c, ym), tipo:c.tipo, status:stt, repete:true });
       }
     });
     lista.sort(function(a,b){ return a.dia - b.dia; });
@@ -1018,24 +1063,59 @@
     });
     return linhas.join("\n");
   }
-  function abrirRelatorio(){
-    var ref = addDias(inicioSemana, 3);
-    var ano = ref.getFullYear(), mes = ref.getMonth();
-    document.getElementById("relMes").textContent = "Mês: " + nomeMesAno(ano, mes);
-    var lista = itensDoMes(ano, mes);
-    var box = document.getElementById("relLista"); box.innerHTML = "";
+  var relSel = {};
+  function somaMes(lista){
+    var e=0,p=0;
+    lista.forEach(function(it){ var v=parseValor(it.valor); if(v>0){ if(it.tipo==="empresa") e+=v; else p+=v; } });
+    return { empresa:e, pessoal:p, geral:e+p };
+  }
+  function mesesDisponiveis(){
+    var hoje = new Date();
+    var base = hoje.getFullYear()*12 + hoje.getMonth();
+    var minIdx = base - 11, maxIdx = base;
+    contas.forEach(function(c){
+      if(c.repete === false){ var dt=fromISO(c.data); if(dt){ var idx=dt.getFullYear()*12+dt.getMonth(); if(idx<minIdx) minIdx=idx; if(idx>maxIdx) maxIdx=idx; } }
+    });
+    var arr=[];
+    for(var idx=maxIdx; idx>=minIdx; idx--){ arr.push({ ano:Math.floor(idx/12), mes:idx%12 }); }
+    return arr;
+  }
+  function selecionadosOrdenados(){
+    return Object.keys(relSel).map(function(k){ return relSel[k]; }).sort(function(a,b){ return (a.ano*12+a.mes)-(b.ano*12+b.mes); });
+  }
+  function montarTextoPeriodo(sel){
+    var blocos=[], te=0, tp=0;
+    sel.forEach(function(o){
+      var lista = itensDoMes(o.ano, o.mes);
+      blocos.push(montarTextoRelatorio(o.ano, o.mes, lista));
+      var s = somaMes(lista); te += s.empresa; tp += s.pessoal;
+    });
+    var txt = blocos.join("\n");
+    if(sel.length > 1){
+      txt += "\nTOTAIS DO PERÍODO (" + sel.length + " meses)\n";
+      txt += "  Empresa — R$ " + formatValor(te) + "\n";
+      txt += "  Pessoal — R$ " + formatValor(tp) + "\n";
+      txt += "  Geral — R$ " + formatValor(te+tp) + "\n";
+    }
+    return txt;
+  }
+  function renderMesSecao(box, ano, mes, lista){
+    var hm = document.createElement("div");
+    hm.textContent = nomeMesAno(ano, mes);
+    hm.style.cssText = "font-family:var(--serif);font-weight:700;color:var(--escuro);font-size:17px;margin:16px 2px 6px;";
+    box.appendChild(hm);
     if(lista.length === 0){
-      var vazio = document.createElement("div");
-      vazio.style.cssText = "padding:24px 8px;text-align:center;color:var(--cinzaTx);font-size:14px;";
-      vazio.textContent = "Nenhuma despesa neste mês.";
-      box.appendChild(vazio);
+      var v = document.createElement("div");
+      v.style.cssText = "padding:8px;color:var(--cinzaTx);font-size:13px;";
+      v.textContent = "Nenhuma despesa neste mês.";
+      box.appendChild(v); return;
     }
     GRUPOS_REL.forEach(function(g){
       var doGrupo = lista.filter(function(it){ return it.repete === g.r; });
       if(doGrupo.length === 0) return;
       var gh = document.createElement("div");
       gh.textContent = g.tela;
-      gh.style.cssText = "font-family:var(--serif);font-weight:700;color:var(--vinho);margin:12px 2px 6px;font-size:15px;border-bottom:1px solid rgba(62,76,89,.2);padding-bottom:4px;";
+      gh.style.cssText = "font-family:var(--serif);font-weight:700;color:var(--vinho);margin:12px 2px 6px;font-size:14px;border-bottom:1px solid rgba(62,76,89,.2);padding-bottom:4px;";
       box.appendChild(gh);
       ["empresa","pessoal"].forEach(function(tp){
         var itens = doGrupo.filter(function(it){ return it.tipo===tp; });
@@ -1057,7 +1137,65 @@
         });
       });
     });
-    relTextoAtual = montarTextoRelatorio(ano, mes, lista);
+    var s = somaMes(lista);
+    var tot = document.createElement("div");
+    tot.style.cssText = "display:flex;justify-content:space-between;gap:8px;padding:8px 9px;margin:6px 2px 2px;border-top:1px solid rgba(25,38,51,.12);font-size:13px;";
+    tot.innerHTML = "<span style='color:var(--cinzaTx);'>Total do mês</span><span style='font-family:var(--serif);font-weight:700;'>R$ " + formatValor(s.geral) + "</span>";
+    box.appendChild(tot);
+  }
+  function renderRelatorio(){
+    var chips = document.querySelectorAll(".relMesChip");
+    chips.forEach(function(ch){ ch.classList.toggle("sel", !!relSel[ch.getAttribute("data-ym")]); });
+    var sel = selecionadosOrdenados();
+    var box = document.getElementById("relLista"); box.innerHTML = "";
+    if(sel.length === 0){
+      var vazio = document.createElement("div");
+      vazio.style.cssText = "padding:24px 8px;text-align:center;color:var(--cinzaTx);font-size:14px;";
+      vazio.textContent = "Escolha um ou mais meses acima.";
+      box.appendChild(vazio); relTextoAtual = ""; return;
+    }
+    sel.forEach(function(o){ renderMesSecao(box, o.ano, o.mes, itensDoMes(o.ano, o.mes)); });
+    if(sel.length > 1){
+      var te=0, tp=0;
+      sel.forEach(function(o){ var s=somaMes(itensDoMes(o.ano, o.mes)); te+=s.empresa; tp+=s.pessoal; });
+      var bloco = document.createElement("div");
+      bloco.style.cssText = "margin-top:16px;padding:12px 12px;border-radius:10px;background:var(--vinho);color:#f2f7fb;";
+      bloco.innerHTML = "<div style='font-weight:700;font-size:13px;margin-bottom:6px;'>Totais do período (" + sel.length + " meses)</div>" +
+        "<div style='display:flex;justify-content:space-between;font-size:13px;'><span>Empresa</span><span>R$ " + formatValor(te) + "</span></div>" +
+        "<div style='display:flex;justify-content:space-between;font-size:13px;'><span>Pessoal</span><span>R$ " + formatValor(tp) + "</span></div>" +
+        "<div style='display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-top:4px;'><span>Geral</span><span>R$ " + formatValor(te+tp) + "</span></div>";
+      box.appendChild(bloco);
+    }
+    relTextoAtual = montarTextoPeriodo(sel);
+  }
+  function montarChipsMeses(){
+    var cont = document.getElementById("relMeses"); cont.innerHTML = "";
+    mesesDisponiveis().forEach(function(o){
+      var ym = chaveMes(o.ano, o.mes);
+      var ch = document.createElement("button");
+      ch.className = "relMesChip"; ch.setAttribute("data-ym", ym);
+      ch.textContent = nomeMesAno(o.ano, o.mes);
+      ch.addEventListener("click", function(){
+        if(relSel[ym]) delete relSel[ym]; else relSel[ym] = { ano:o.ano, mes:o.mes };
+        renderRelatorio();
+      });
+      cont.appendChild(ch);
+    });
+  }
+  function selecionarEsteMes(){
+    var ref = addDias(inicioSemana, 3);
+    relSel = {}; relSel[chaveMes(ref.getFullYear(), ref.getMonth())] = { ano:ref.getFullYear(), mes:ref.getMonth() };
+    renderRelatorio();
+  }
+  function selecionarUltimos(n){
+    relSel = {};
+    var hoje = new Date(); var base = hoje.getFullYear()*12 + hoje.getMonth();
+    for(var i=0;i<n;i++){ var idx=base-i; var ano=Math.floor(idx/12), mes=idx%12; relSel[chaveMes(ano,mes)] = { ano:ano, mes:mes }; }
+    renderRelatorio();
+  }
+  function abrirRelatorio(){
+    montarChipsMeses();
+    selecionarEsteMes();
     document.getElementById("relOverlay").classList.add("aberto");
   }
   function copiarRelatorio(){
@@ -1076,6 +1214,10 @@
   document.getElementById("relFechX").addEventListener("click", function(){ document.getElementById("relOverlay").classList.remove("aberto"); });
   document.getElementById("relOverlay").addEventListener("click", function(e){ if(e.target===this) this.classList.remove("aberto"); });
   document.getElementById("relCopiar").addEventListener("click", copiarRelatorio);
+  document.getElementById("relEste").addEventListener("click", selecionarEsteMes);
+  document.getElementById("rel3").addEventListener("click", function(){ selecionarUltimos(3); });
+  document.getElementById("rel6").addEventListener("click", function(){ selecionarUltimos(6); });
+  document.getElementById("relLimpar").addEventListener("click", function(){ relSel = {}; renderRelatorio(); });
 
   if(NUVEM){ iniciarNuvem(); } else { atualizarBarra(); localInit(); }
 })();
