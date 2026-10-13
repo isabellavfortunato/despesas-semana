@@ -225,6 +225,7 @@
       <div class="tipos">
         <button class="tipoBtn repsel sel" id="fRepMensal">Todo mês</button>
         <button class="tipoBtn repsel" id="fRepUnica">Uma vez</button>
+        <button class="tipoBtn repsel" id="fRepParcelado">Parcelado</button>
       </div>
     </div>
     <div class="campo" style="max-width:90px;" id="campoDia">
@@ -232,11 +233,15 @@
       <input type="number" id="fDia" min="1" max="31" value="5">
     </div>
     <div class="campo" style="max-width:170px; display:none;" id="campoData">
-      <label>Data</label>
+      <label id="lblData">Data</label>
       <input type="date" id="fData">
     </div>
+    <div class="campo" style="max-width:110px; display:none;" id="campoParcelas">
+      <label>Nº de parcelas</label>
+      <input type="number" id="fParcelas" min="2" max="60" value="5">
+    </div>
     <div class="campo" style="max-width:130px;">
-      <label>Valor</label>
+      <label id="lblValor">Valor</label>
       <input type="text" id="fValor" inputmode="decimal" placeholder="opcional">
     </div>
     <button class="btnAcao forte" id="fAdd" style="height:34px;">Adicionar</button>
@@ -755,27 +760,54 @@
   });
   document.getElementById("fEmpresa").addEventListener("click", function(){ tipoNovo="empresa"; this.classList.add("sel"); document.getElementById("fPessoal").classList.remove("sel"); });
   document.getElementById("fPessoal").addEventListener("click", function(){ tipoNovo="pessoal"; this.classList.add("sel"); document.getElementById("fEmpresa").classList.remove("sel"); });
-  var repeteNovo = true;
-  document.getElementById("fRepMensal").addEventListener("click", function(){
-    repeteNovo = true; this.classList.add("sel"); document.getElementById("fRepUnica").classList.remove("sel");
-    document.getElementById("campoDia").style.display = ""; document.getElementById("campoData").style.display = "none";
-  });
-  document.getElementById("fRepUnica").addEventListener("click", function(){
-    repeteNovo = false; this.classList.add("sel"); document.getElementById("fRepMensal").classList.remove("sel");
-    document.getElementById("campoDia").style.display = "none"; document.getElementById("campoData").style.display = "";
-  });
+  var modoNovo = "mensal";
+  function selRep(btnSel){
+    ["fRepMensal","fRepUnica","fRepParcelado"].forEach(function(id){
+      document.getElementById(id).classList.toggle("sel", id===btnSel);
+    });
+  }
+  function aplicarModo(modo){
+    modoNovo = modo;
+    var ehMensal = modo==="mensal", ehParcelado = modo==="parcelado";
+    document.getElementById("campoDia").style.display = ehMensal ? "" : "none";
+    document.getElementById("campoData").style.display = ehMensal ? "none" : "";
+    document.getElementById("campoParcelas").style.display = ehParcelado ? "" : "none";
+    document.getElementById("lblData").textContent = ehParcelado ? "Data da 1ª parcela" : "Data";
+    document.getElementById("lblValor").textContent = ehParcelado ? "Valor da parcela" : "Valor";
+  }
+  document.getElementById("fRepMensal").addEventListener("click", function(){ selRep("fRepMensal"); aplicarModo("mensal"); });
+  document.getElementById("fRepUnica").addEventListener("click", function(){ selRep("fRepUnica"); aplicarModo("unica"); });
+  document.getElementById("fRepParcelado").addEventListener("click", function(){ selRep("fRepParcelado"); aplicarModo("parcelado"); });
   document.getElementById("fAdd").addEventListener("click", function(){
     var nome = document.getElementById("fNome").value.trim();
     var valor = document.getElementById("fValor").value.trim();
     if(!nome){ alert("Escreva o nome da conta."); return; }
     var alvo;
-    if(repeteNovo){
+    if(modoNovo === "mensal"){
       var dia = parseInt(document.getElementById("fDia").value, 10);
       if(!dia || dia < 1 || dia > 31){ alert("Escolha um dia do mês entre 1 e 31."); return; }
       contas.push({ id:"c"+Date.now(), nome:nome, tipo:tipoNovo, dia:dia, valor: valor ? formatValor(parseValor(valor)) : "", status:"aberta", repete:true, removidos:[] });
       var refm = addDias(inicioSemana, 3);
       alvo = new Date(refm.getFullYear(), refm.getMonth(), Math.min(dia, ultimoDia(refm.getFullYear(), refm.getMonth())));
       toast("Despesa mensal adicionada no dia " + dia + ".");
+    } else if(modoNovo === "parcelado"){
+      var dataP = document.getElementById("fData").value;
+      var dt0 = fromISO(dataP);
+      if(!dt0){ alert("Escolha a data da primeira parcela."); return; }
+      var n = parseInt(document.getElementById("fParcelas").value, 10);
+      if(!n || n < 2 || n > 60){ alert("Escolha de 2 a 60 parcelas."); return; }
+      var valFmt = valor ? formatValor(parseValor(valor)) : "";
+      var diaP = dt0.getDate(), anoP = dt0.getFullYear(), mesP = dt0.getMonth();
+      var baseId = Date.now();
+      for(var p = 0; p < n; p++){
+        var mesAtual = mesP + p;
+        var diaClamp = Math.min(diaP, ultimoDia(anoP, mesAtual));
+        var dP = new Date(anoP, mesAtual, diaClamp);
+        var isoP = dP.getFullYear() + "-" + pad2(dP.getMonth()+1) + "-" + pad2(dP.getDate());
+        contas.push({ id:"c"+baseId+"p"+p, nome:nome+" ("+(p+1)+"/"+n+")", tipo:tipoNovo, data:isoP, valor:valFmt, status:"aberta", repete:false });
+      }
+      alvo = dt0;
+      toast(n + " parcelas adicionadas a partir de " + dt0.getDate() + "/" + (dt0.getMonth()+1) + ".");
     } else {
       var dataStr = document.getElementById("fData").value;
       var dt = fromISO(dataStr);
