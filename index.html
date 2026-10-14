@@ -64,18 +64,18 @@
   .coluna{ display:flex; flex-direction:column; background:var(--carta); border:1px solid rgba(25,38,51,.10); border-radius:12px; overflow:hidden; min-height:190px; transition:box-shadow .12s ease, border-color .12s ease; }
   .coluna.hoje{ border:2px solid #7d858c; }
   .coluna.alvo{ border:2px dashed var(--vinho); box-shadow:0 0 0 4px rgba(62,76,89,.10); }
-  .cabDia{ padding:8px 10px; border-bottom:1px solid rgba(25,38,51,.08); }
+  .cabDia{ padding:6px 10px; border-bottom:1px solid rgba(25,38,51,.08); }
   .coluna.hoje .cabDia{ background:#7d858c; color:#f2f7fb; }
-  .cabDia .dow{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; opacity:.8; }
-  .cabDia .num{ font-family:var(--serif); font-weight:700; font-size:20px; line-height:1; }
-  .cabDia .mes{ font-size:11px; opacity:.7; }
-  .corpo{ padding:8px; display:flex; flex-direction:column; gap:8px; flex:1; }
+  .cabDia .dow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; opacity:.8; }
+  .cabDia .num{ font-family:var(--serif); font-weight:700; font-size:18px; line-height:1; }
+  .cabDia .mes{ font-size:10.5px; opacity:.7; }
+  .corpo{ padding:6px; display:flex; flex-direction:column; gap:6px; flex:1; }
   .vazio{ font-size:12px; color:rgba(25,38,51,.28); text-align:center; padding:18px 4px; }
-  .rodapeDia{ padding:8px 10px; background:rgba(62,76,89,.06); border-top:1px solid rgba(25,38,51,.08); display:flex; justify-content:space-between; align-items:baseline; }
-  .rodapeDia .rot{ font-size:11px; color:var(--cinzaTx); text-transform:uppercase; letter-spacing:.06em; }
-  .rodapeDia .val{ font-family:var(--serif); font-weight:700; font-size:15px; color:var(--vinho); }
+  .rodapeDia{ padding:6px 10px; background:rgba(62,76,89,.06); border-top:1px solid rgba(25,38,51,.08); display:flex; justify-content:space-between; align-items:baseline; }
+  .rodapeDia .rot{ font-size:10.5px; color:var(--cinzaTx); text-transform:uppercase; letter-spacing:.06em; }
+  .rodapeDia .val{ font-family:var(--serif); font-weight:700; font-size:14px; color:var(--vinho); }
 
-  .conta{ border-radius:10px; padding:8px 9px; background:var(--carta); border:1px solid rgba(35,43,51,.10); border-left:4px solid var(--cinzaTx); box-shadow:0 1px 3px rgba(35,43,51,.10); }
+  .conta{ border-radius:9px; padding:6px 7px; background:var(--carta); border:1px solid rgba(35,43,51,.10); border-left:4px solid var(--cinzaTx); box-shadow:0 1px 2px rgba(35,43,51,.09); }
   .conta.empresa{ background:var(--tintaE); border-left-color:var(--vermelho); }
   .conta.pessoal{ background:var(--tintaP); border-left-color:var(--laranja); }
   .conta.pulada{ background:var(--cinza); border-left-color:var(--cinzaTx); }
@@ -85,7 +85,7 @@
   .marca{ flex-shrink:0; width:16px; height:16px; margin-top:1px; border-radius:50%; border:2px solid var(--fg); background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
   .marca.on{ background:var(--fg); }
   .conta.pulada .marca{ border-color:var(--cinzaTx); }
-  .nome{ font-size:13.5px; font-weight:600; color:var(--fg); line-height:1.25; margin-top:5px; overflow-wrap:break-word; }
+  .nome{ font-size:12.5px; font-weight:600; color:var(--fg); line-height:1.2; margin-top:3px; overflow-wrap:break-word; }
   .conta.pulada .nome{ color:var(--cinzaTx); text-decoration:line-through; }
   .badgePaga{ display:none; margin-top:3px; margin-left:2px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--fg); }
   .conta.paga .badgePaga{ display:inline-block; }
@@ -94,10 +94,10 @@
   .miniBtn:hover{ opacity:1; }
   .conta.pulada .miniBtn{ color:var(--cinzaTx); }
   .miniBtn.pular.on{ opacity:1; background:rgba(25,38,51,.25); }
-  .linhaValor{ display:flex; align-items:center; gap:4px; margin-top:6px; margin-left:2px; }
-  .linhaValor .cifrao{ font-size:12px; color:var(--fg); opacity:.9; }
+  .linhaValor{ display:flex; align-items:center; gap:4px; margin-top:4px; margin-left:2px; }
+  .linhaValor .cifrao{ font-size:11.5px; color:var(--fg); opacity:.9; }
   .conta.pulada .linhaValor .cifrao{ color:var(--cinzaTx); }
-  .linhaValor input{ flex:1; width:100%; min-width:0; background:#ffffff; border:1px solid rgba(35,43,51,.16); border-radius:5px; padding:3px 6px; font-size:13px; font-weight:600; color:var(--escuro); font-family:var(--serif); outline:none; }
+  .linhaValor input{ flex:1; width:100%; min-width:0; background:#ffffff; border:1px solid rgba(35,43,51,.16); border-radius:5px; padding:2px 6px; font-size:12.5px; font-weight:600; color:var(--escuro); font-family:var(--serif); outline:none; }
 
   .fantasma{ position:fixed; pointer-events:none; z-index:9999; color:#fff8f2; padding:6px 12px; border-radius:8px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(25,38,51,.35); white-space:nowrap; transform:translate(-50%,-120%); }
 
@@ -135,7 +135,7 @@
   .calcAtalho{ height:32px; padding:0 12px; border-radius:16px; border:1px solid rgba(62,76,89,.3); background:#fff; color:var(--vinho); font-size:12px; font-weight:600; cursor:pointer; }
   .relMesChip{ height:30px; padding:0 12px; border-radius:16px; border:1px solid rgba(62,76,89,.3); background:#fff; color:var(--vinho); font-size:12px; font-weight:600; cursor:pointer; }
   .relMesChip.sel{ background:var(--vermelho); color:#fff; border-color:var(--vermelho); }
-  .btnTodosMeses{ margin-top:5px; margin-left:2px; background:transparent; border:none; color:var(--fg); opacity:.6; font-size:11px; cursor:pointer; padding:1px 0; text-decoration:underline; font-family:var(--serif); }
+  .btnTodosMeses{ margin-top:3px; margin-left:2px; background:transparent; border:none; color:var(--fg); opacity:.6; font-size:10.5px; cursor:pointer; padding:1px 0; text-decoration:underline; font-family:var(--serif); }
   .btnTodosMeses:hover{ opacity:1; }
   .conta.pulada .btnTodosMeses{ color:var(--cinzaTx); }
   .calcLista{ flex:1; overflow-y:auto; padding:6px 12px 12px; display:flex; flex-direction:column; gap:6px; }
@@ -610,12 +610,13 @@
     input.addEventListener("blur", function(){
       var fmt = input.value.trim() ? formatValor(parseValor(input.value)) : "";
       definirValor(c, dataCol, fmt);
-      input.value = fmt; salvar(); atualizarTotais(); aplicarPendente();
+      input.value = fmt; salvar(); atualizarTotais(); aplicarPendente(); render();
     });
     linha.appendChild(cif); linha.appendChild(input);
     wrap.appendChild(linha);
 
-    if(c.repete !== false){
+    var ymCol = chaveMes(dataCol.getFullYear(), dataCol.getMonth());
+    if(c.repete !== false && c.valorMes && c.valorMes[ymCol] != null){
       var btnTodos = document.createElement("button");
       btnTodos.className = "btnTodosMeses";
       btnTodos.textContent = "aplicar a todos os meses";
