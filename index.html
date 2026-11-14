@@ -838,7 +838,7 @@
           toast("Esse PDF não tem texto para ler, parece uma imagem ou um boleto digitalizado. Nesse caso dá para digitar a conta na mão.");
           return;
         }
-        preencherFormulario(interpretarBoleto(texto));
+        preencherFormulario(interpretarBoleto(texto, arq.name));
       }).catch(function(){
         boletoAtivo = false;
         toast("Não consegui abrir esse PDF.");
@@ -862,49 +862,77 @@
       });
     }
 
-    function dvGeral(b43){
-      var pesos = [2,3,4,5,6,7,8,9], soma = 0, p = 0;
-      for(var i=b43.length-1;i>=0;i--){ soma += parseInt(b43[i],10) * pesos[p%8]; p++; }
-      var resto = soma % 11, dv = 11 - resto;
-      if(dv === 0 || dv >= 10) dv = 1;
-      return dv;
-    }
-    function linhaParaBarras(l){
-      return l.substring(0,4) + l.substring(32,33) + l.substring(33,47) + l.substring(4,9) + l.substring(10,20) + l.substring(21,31);
-    }
-    function decodificaLinha(l){
-      if(l.length !== 47) return null;
-      var b = linhaParaBarras(l);
-      if(dvGeral(b.substring(0,4) + b.substring(5)) !== parseInt(b.substring(4,5), 10)) return null;
-      return { barras:b, fator:parseInt(b.substring(5,9),10), centavos:parseInt(b.substring(9,19),10) };
-    }
-    function dataDoFator(fator){
-      var base = Date.UTC(1997,9,7), hoje = Date.now(), melhor = null, dist = Infinity;
-      for(var k=0;k<=3;k++){ var ms = base + (fator + 9999*k) * 86400000; var d = Math.abs(ms - hoje); if(d < dist){ dist = d; melhor = ms; } }
-      var dt = new Date(melhor);
-      return dt.getUTCFullYear() + "-" + pad2(dt.getUTCMonth()+1) + "-" + pad2(dt.getUTCDate());
+    function diverso(d){ var set = {}; for(var i=0;i<d.length;i++) set[d[i]] = 1; return Object.keys(set).length >= 4; }
+    function dvGeral(b43){ var pesos=[2,3,4,5,6,7,8,9], soma=0, p=0; for(var i=b43.length-1;i>=0;i--){ soma+=parseInt(b43[i],10)*pesos[p%8]; p++; } var r=soma%11, dv=11-r; if(dv===0||dv>=10) dv=1; return dv; }
+    function linhaParaBarras(l){ return l.substring(0,4)+l.substring(32,33)+l.substring(33,47)+l.substring(4,9)+l.substring(10,20)+l.substring(21,31); }
+    function decodificaLinha(l){ if(l.length!==47) return null; var b=linhaParaBarras(l); if(dvGeral(b.substring(0,4)+b.substring(5))!==parseInt(b.substring(4,5),10)) return null; return { fator:parseInt(b.substring(5,9),10), centavos:parseInt(b.substring(9,19),10) }; }
+    function decodificaArrec(l){ if(l.length!==48||l[0]!=="8") return null; var b=l.substring(0,11)+l.substring(12,23)+l.substring(24,35)+l.substring(36,47); return { centavos:parseInt(b.substring(4,15),10) }; }
+    function dataDoFator(f){
+      var hoje=Date.now(), cands=[Date.UTC(2025,1,22)+(f-1000)*86400000], base=Date.UTC(1997,9,7);
+      for(var k=0;k<=3;k++) cands.push(base+(f+9999*k)*86400000);
+      var best=null, dist=Infinity;
+      for(var i=0;i<cands.length;i++){ var d=Math.abs(cands[i]-hoje); if(d<dist){ dist=d; best=cands[i]; } }
+      var dt=new Date(best); return dt.getUTCFullYear()+"-"+pad2(dt.getUTCMonth()+1)+"-"+pad2(dt.getUTCDate());
     }
     function acharDigitavel(t){
       var runs = t.match(/\d[\d.\s]{38,}\d/g) || [];
       var i, d;
-      for(i=0;i<runs.length;i++){ d = runs[i].replace(/[^\d]/g,""); if(d.length === 47){ var dec = decodificaLinha(d); if(dec && dec.centavos > 0) return d; } }
-      var hoje = new Date(), aMin = hoje.getFullYear()-2, aMax = hoje.getFullYear()+3;
-      for(i=0;i<runs.length;i++){ var dd = runs[i].replace(/[^\d]/g,""); if(dd.length < 48) continue;
-        for(var s=0; s+47<=dd.length; s++){ var cand = dd.substr(s,47), de = decodificaLinha(cand);
-          if(de && de.centavos > 0 && de.centavos < 1000000000){ var ano = +dataDoFator(de.fator).slice(0,4); if(ano >= aMin && ano <= aMax) return cand; } } }
+      for(i=0;i<runs.length;i++){ d=runs[i].replace(/[^\d]/g,"");
+        if(d.length===47 && diverso(d)){ var dec=decodificaLinha(d); if(dec && dec.centavos>0) return { tipo:"cobranca", linha:d }; }
+        if(d.length===48 && d[0]==="8" && diverso(d)){ var da=decodificaArrec(d); if(da && da.centavos>0) return { tipo:"arrecadacao", linha:d }; }
+      }
+      var aMin=new Date().getFullYear()-2, aMax=new Date().getFullYear()+3;
+      for(var j=0;j<runs.length;j++){ var dd=runs[j].replace(/[^\d]/g,""); if(dd.length<48||dd.length>54) continue;
+        for(var sp=0; sp+47<=dd.length; sp++){ var c=dd.substr(sp,47); if(!diverso(c)) continue; var de=decodificaLinha(c);
+          if(de && de.centavos>0 && de.centavos<1e8){ var an=+dataDoFator(de.fator).slice(0,4); if(an>=aMin&&an<=aMax) return { tipo:"cobranca", linha:c }; } } }
       return null;
     }
-    function interpretarBoleto(texto){
-      var res = { nome:"", valor:"", data:"" };
-      var t = (texto || "").replace(/ /g, " ");
-      var l = acharDigitavel(t);
-      if(l){ var dec = decodificaLinha(l); if(dec){ if(dec.centavos > 0) res.valor = formatValor(dec.centavos / 100); if(dec.fator > 0) res.data = dataDoFator(dec.fator); } }
-      if(!res.valor){ var mv = t.match(/Valor\s+(?:do\s+)?(?:Documento|Cobrado)[\s:R$]*([\d.]+,\d{2})/i); if(mv) res.valor = mv[1]; }
-      if(!res.data){ var md = t.match(/Vencimento[\s:]*([0-3]?\d)\/([01]?\d)\/(\d{4})/i); if(md) res.data = md[3] + "-" + pad2(+md[2]) + "-" + pad2(+md[1]); }
-      var mn = t.match(/Benefici[aá]rio[\s:]*([^\d]{3,70})/i) || t.match(/Cedente[\s:]*([^\d]{3,70})/i);
-      if(mn){ var nome = mn[1].split(/\b(?:CNPJ|CPF|Ag[eê]ncia|C[oó]digo|Nosso|Endere|Benefici|Pagador|Sacado|Vencimento)\b/i)[0];
-        nome = nome.replace(/[\-–—:.\s]+$/, "").replace(/\s+/g, " ").trim();
-        if(nome.length >= 3) res.nome = nome.slice(0, 60); }
+    function valorPorTexto(t){
+      var pats=[
+        /Valor\s+Total\s+do\s+Documento[\s:R$()]*([1-9][\d.]*,\d{2})/i,
+        /Valor\s+Total\s+a?\s*Pagar[\s:R$()\-]*([1-9][\d.]*,\d{2})/i,
+        /VALOR\s+TOTAL[\s:R$()]*([1-9][\d.]*,\d{2})/i,
+        /Total\s+da\s+Guia[\s:R$()]*([1-9][\d.]*,\d{2})/i,
+        /Total\s+a\s+pagar[\s:R$()\-]*([1-9][\d.]*,\d{2})/i,
+        /Valor\s+a\s+recolher[\s:R$()]*([1-9][\d.]*,\d{2})/i,
+        /Valor\s+(?:do\s+)?(?:Documento|Cobrado)[\s:R$()]*([1-9][\d.]*,\d{2})/i
+      ];
+      for(var i=0;i<pats.length;i++){ var m=t.match(pats[i]); if(m) return m[1]; }
+      return "";
+    }
+    function vencimentoPorTexto(t){
+      var m=t.match(/(?:Data\s+de\s+Vencimento|Vencimento|Pagar\s+(?:este\s+documento\s+)?at[eé])[\s:]*([0-3]?\d)\/([01]?\d)\/(\d{4})/i);
+      if(m) return m[3]+"-"+pad2(+m[2])+"-"+pad2(+m[1]);
+      return "";
+    }
+    function nomeLimpoArquivo(nome){
+      if(!nome) return "";
+      var n=nome.replace(/\.[a-z0-9]{2,4}$/i,"");
+      n=n.replace(/^[\s\d]{2,4}\s*[-_]\s*/,"");
+      n=n.replace(/[_]+/g," ").replace(/\s+/g," ").trim();
+      return n.slice(0,60);
+    }
+    function vencimentoPorArquivo(nome){
+      var m=(nome||"").match(/^(\d{2})(\d{2})\b/);
+      if(!m) return "";
+      var dia=+m[1], mes=+m[2]; if(dia<1||dia>31||mes<1||mes>12) return "";
+      var hoje=new Date(), ano=hoje.getFullYear(), d=new Date(ano,mes-1,dia);
+      if(d < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()-60)) ano++;
+      return ano+"-"+pad2(mes)+"-"+pad2(dia);
+    }
+    function interpretarBoleto(texto, nomeArq){
+      var res={ nome:"", valor:"", data:"" };
+      var t=(texto||"").replace(/ /g," ");
+      res.nome=nomeLimpoArquivo(nomeArq);
+      var a=acharDigitavel(t);
+      if(a){
+        if(a.tipo==="cobranca"){ var dec=decodificaLinha(a.linha); if(dec){ if(dec.centavos>0) res.valor=formatValor(dec.centavos/100); if(dec.fator>0) res.data=dataDoFator(dec.fator); } }
+        else { var da=decodificaArrec(a.linha); if(da && da.centavos>0) res.valor=formatValor(da.centavos/100); }
+      }
+      if(!res.valor) res.valor=valorPorTexto(t);
+      if(!res.data) res.data=vencimentoPorTexto(t);
+      if(!res.data) res.data=vencimentoPorArquivo(nomeArq);
+      if(!res.nome){ var mn=t.match(/Benefici[aá]rio[\s:]*([^\d]{3,70})/i); if(mn){ res.nome=mn[1].replace(/[\-–—:.\s]+$/,"").replace(/\s+/g," ").trim().slice(0,60); } }
       return res;
     }
     function preencherFormulario(d){
@@ -915,10 +943,7 @@
       document.getElementById("fValor").value = d.valor || "";
       setTimeout(function(){ form.scrollIntoView({behavior:"smooth", block:"center"}); }, 40);
       var fim = fila.length ? " Ainda há " + fila.length + " na fila." : "";
-      if(!d.nome && !d.valor && !d.data){
-        toast("Li o texto do PDF mas não encontrei os dados do boleto. Confira o arquivo ou preencha na mão." + fim);
-        return;
-      }
+      if(!d.nome && !d.valor && !d.data){ toast("Li o texto do PDF mas não encontrei os dados do boleto. Confira o arquivo ou preencha na mão." + fim); return; }
       var faltou = [];
       if(!d.nome) faltou.push("nome");
       if(!d.valor) faltou.push("valor");
