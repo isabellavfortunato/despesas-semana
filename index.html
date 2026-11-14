@@ -816,7 +816,10 @@
     var fila = [];
     var boletoAtivo = false;
 
-    btnB.addEventListener("click", function(){ inputB.value = ""; inputB.click(); });
+    btnB.addEventListener("click", function(){
+      if(!window.pdfjsLib){ toast("A leitura de boleto não carregou. Confira a conexão e recarregue a página."); return; }
+      inputB.value = ""; inputB.click();
+    });
     inputB.addEventListener("change", function(){
       fila = Array.prototype.slice.call(inputB.files || []);
       if(!fila.length) return;
@@ -829,10 +832,16 @@
       boletoAtivo = true;
       toast("Lendo o boleto…");
       lerPdfTexto(arq).then(function(texto){
+        var limpo = (texto || "").replace(/\s/g, "");
+        if(limpo.length < 12){
+          boletoAtivo = false;
+          toast("Esse PDF não tem texto para ler, parece uma imagem ou um boleto digitalizado. Nesse caso dá para digitar a conta na mão.");
+          return;
+        }
         preencherFormulario(interpretarBoleto(texto));
       }).catch(function(){
         boletoAtivo = false;
-        toast("Não consegui ler esse PDF. Se for uma foto ou imagem, ele não tem texto para ler.");
+        toast("Não consegui abrir esse PDF.");
       });
     }
 
@@ -853,47 +862,49 @@
       });
     }
 
+    function dvGeral(b43){
+      var pesos = [2,3,4,5,6,7,8,9], soma = 0, p = 0;
+      for(var i=b43.length-1;i>=0;i--){ soma += parseInt(b43[i],10) * pesos[p%8]; p++; }
+      var resto = soma % 11, dv = 11 - resto;
+      if(dv === 0 || dv >= 10) dv = 1;
+      return dv;
+    }
     function linhaParaBarras(l){
       return l.substring(0,4) + l.substring(32,33) + l.substring(33,47) + l.substring(4,9) + l.substring(10,20) + l.substring(21,31);
     }
+    function decodificaLinha(l){
+      if(l.length !== 47) return null;
+      var b = linhaParaBarras(l);
+      if(dvGeral(b.substring(0,4) + b.substring(5)) !== parseInt(b.substring(4,5), 10)) return null;
+      return { barras:b, fator:parseInt(b.substring(5,9),10), centavos:parseInt(b.substring(9,19),10) };
+    }
     function dataDoFator(fator){
       var base = Date.UTC(1997,9,7), hoje = Date.now(), melhor = null, dist = Infinity;
-      for(var k=0;k<=3;k++){
-        var ms = base + (fator + 9999*k) * 86400000;
-        var d = Math.abs(ms - hoje);
-        if(d < dist){ dist = d; melhor = ms; }
-      }
+      for(var k=0;k<=3;k++){ var ms = base + (fator + 9999*k) * 86400000; var d = Math.abs(ms - hoje); if(d < dist){ dist = d; melhor = ms; } }
       var dt = new Date(melhor);
       return dt.getUTCFullYear() + "-" + pad2(dt.getUTCMonth()+1) + "-" + pad2(dt.getUTCDate());
+    }
+    function acharDigitavel(t){
+      var runs = t.match(/\d[\d.\s]{38,}\d/g) || [];
+      var i, d;
+      for(i=0;i<runs.length;i++){ d = runs[i].replace(/[^\d]/g,""); if(d.length === 47){ var dec = decodificaLinha(d); if(dec && dec.centavos > 0) return d; } }
+      var hoje = new Date(), aMin = hoje.getFullYear()-2, aMax = hoje.getFullYear()+3;
+      for(i=0;i<runs.length;i++){ var dd = runs[i].replace(/[^\d]/g,""); if(dd.length < 48) continue;
+        for(var s=0; s+47<=dd.length; s++){ var cand = dd.substr(s,47), de = decodificaLinha(cand);
+          if(de && de.centavos > 0 && de.centavos < 1000000000){ var ano = +dataDoFator(de.fator).slice(0,4); if(ano >= aMin && ano <= aMax) return cand; } } }
+      return null;
     }
     function interpretarBoleto(texto){
       var res = { nome:"", valor:"", data:"" };
       var t = (texto || "").replace(/ /g, " ");
-      var m = t.match(/(\d{5})[.\s]?(\d{5})\s+(\d{5})[.\s]?(\d{6})\s+(\d{5})[.\s]?(\d{6})\s+(\d)\s+(\d{14})/);
-      if(m){
-        var linha = m[1]+m[2]+m[3]+m[4]+m[5]+m[6]+m[7]+m[8];
-        if(linha.length === 47){
-          var barras = linhaParaBarras(linha);
-          var fator = parseInt(barras.substring(5,9), 10);
-          var centavos = parseInt(barras.substring(9,19), 10);
-          if(centavos > 0) res.valor = formatValor(centavos / 100);
-          if(fator > 0) res.data = dataDoFator(fator);
-        }
-      }
-      if(!res.valor){
-        var mv = t.match(/Valor\s+(?:do\s+)?(?:Documento|Cobrado)[\s:R$]*([\d.]+,\d{2})/i);
-        if(mv) res.valor = mv[1];
-      }
-      if(!res.data){
-        var md = t.match(/Vencimento[\s:]*([0-3]?\d)\/([01]?\d)\/(\d{4})/i);
-        if(md) res.data = md[3] + "-" + pad2(+md[2]) + "-" + pad2(+md[1]);
-      }
+      var l = acharDigitavel(t);
+      if(l){ var dec = decodificaLinha(l); if(dec){ if(dec.centavos > 0) res.valor = formatValor(dec.centavos / 100); if(dec.fator > 0) res.data = dataDoFator(dec.fator); } }
+      if(!res.valor){ var mv = t.match(/Valor\s+(?:do\s+)?(?:Documento|Cobrado)[\s:R$]*([\d.]+,\d{2})/i); if(mv) res.valor = mv[1]; }
+      if(!res.data){ var md = t.match(/Vencimento[\s:]*([0-3]?\d)\/([01]?\d)\/(\d{4})/i); if(md) res.data = md[3] + "-" + pad2(+md[2]) + "-" + pad2(+md[1]); }
       var mn = t.match(/Benefici[aá]rio[\s:]*([^\d]{3,70})/i) || t.match(/Cedente[\s:]*([^\d]{3,70})/i);
-      if(mn){
-        var nome = mn[1].split(/\b(?:CNPJ|CPF|Ag[eê]ncia|C[oó]digo|Nosso|Endere|Benefici|Pagador|Sacado|Vencimento)\b/i)[0];
+      if(mn){ var nome = mn[1].split(/\b(?:CNPJ|CPF|Ag[eê]ncia|C[oó]digo|Nosso|Endere|Benefici|Pagador|Sacado|Vencimento)\b/i)[0];
         nome = nome.replace(/[\-–—:.\s]+$/, "").replace(/\s+/g, " ").trim();
-        if(nome.length >= 3) res.nome = nome.slice(0, 60);
-      }
+        if(nome.length >= 3) res.nome = nome.slice(0, 60); }
       return res;
     }
     function preencherFormulario(d){
@@ -903,11 +914,15 @@
       document.getElementById("fData").value = d.data || "";
       document.getElementById("fValor").value = d.valor || "";
       setTimeout(function(){ form.scrollIntoView({behavior:"smooth", block:"center"}); }, 40);
+      var fim = fila.length ? " Ainda há " + fila.length + " na fila." : "";
+      if(!d.nome && !d.valor && !d.data){
+        toast("Li o texto do PDF mas não encontrei os dados do boleto. Confira o arquivo ou preencha na mão." + fim);
+        return;
+      }
       var faltou = [];
       if(!d.nome) faltou.push("nome");
       if(!d.valor) faltou.push("valor");
       if(!d.data) faltou.push("vencimento");
-      var fim = fila.length ? " Ainda há " + fila.length + " na fila." : "";
       if(faltou.length) toast("Boleto lido. Confira e complete: " + faltou.join(", ") + ". Escolha empresa ou pessoal." + fim);
       else toast("Boleto lido. Confira, escolha empresa ou pessoal e toque em Adicionar." + fim);
     }
