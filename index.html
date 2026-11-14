@@ -172,6 +172,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -210,8 +211,10 @@
     <button class="btnAcao forte" id="btnCalc">Calculadora de pagamento</button>
     <button class="btnAcao" id="btnRelatorio">Relatório do mês</button>
     <button class="btnAcao" id="btnNova">Adicionar conta</button>
+    <button class="btnAcao" id="btnBoleto">Lançar boleto</button>
     <button class="btnAcao" id="btnReset">Restaurar contas originais</button>
   </div>
+  <input type="file" id="fBoleto" accept="application/pdf" multiple style="display:none;">
 
   <div class="form" id="form">
     <div class="campo" style="flex:2; min-width:180px;">
@@ -804,6 +807,118 @@
     btnNova.textContent = aberto ? "Fechar" : "Adicionar conta";
     if(aberto){ setTimeout(function(){ form.scrollIntoView({behavior:"smooth", block:"center"}); },40); }
   });
+
+  // ----- Lançar despesa a partir do PDF do boleto -----
+  (function(){
+    try{ if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } }catch(e){}
+    var inputB = document.getElementById("fBoleto");
+    var btnB = document.getElementById("btnBoleto");
+    var fila = [];
+    var boletoAtivo = false;
+
+    btnB.addEventListener("click", function(){ inputB.value = ""; inputB.click(); });
+    inputB.addEventListener("change", function(){
+      fila = Array.prototype.slice.call(inputB.files || []);
+      if(!fila.length) return;
+      proximoBoleto();
+    });
+
+    function proximoBoleto(){
+      if(!fila.length){ boletoAtivo = false; return; }
+      var arq = fila.shift();
+      boletoAtivo = true;
+      toast("Lendo o boleto…");
+      lerPdfTexto(arq).then(function(texto){
+        preencherFormulario(interpretarBoleto(texto));
+      }).catch(function(){
+        boletoAtivo = false;
+        toast("Não consegui ler esse PDF. Se for uma foto ou imagem, ele não tem texto para ler.");
+      });
+    }
+
+    function lerPdfTexto(arq){
+      return arq.arrayBuffer().then(function(buf){
+        if(!window.pdfjsLib) throw new Error("pdfjs ausente");
+        return pdfjsLib.getDocument({ data: buf }).promise.then(function(pdf){
+          var ns = [];
+          for(var i=1;i<=pdf.numPages;i++) ns.push(i);
+          return ns.reduce(function(acc, n){
+            return acc.then(function(txt){
+              return pdf.getPage(n).then(function(p){ return p.getTextContent(); }).then(function(tc){
+                return txt + " " + tc.items.map(function(it){ return it.str; }).join(" ");
+              });
+            });
+          }, Promise.resolve(""));
+        });
+      });
+    }
+
+    function linhaParaBarras(l){
+      return l.substring(0,4) + l.substring(32,33) + l.substring(33,47) + l.substring(4,9) + l.substring(10,20) + l.substring(21,31);
+    }
+    function dataDoFator(fator){
+      var base = Date.UTC(1997,9,7), hoje = Date.now(), melhor = null, dist = Infinity;
+      for(var k=0;k<=3;k++){
+        var ms = base + (fator + 9999*k) * 86400000;
+        var d = Math.abs(ms - hoje);
+        if(d < dist){ dist = d; melhor = ms; }
+      }
+      var dt = new Date(melhor);
+      return dt.getUTCFullYear() + "-" + pad2(dt.getUTCMonth()+1) + "-" + pad2(dt.getUTCDate());
+    }
+    function interpretarBoleto(texto){
+      var res = { nome:"", valor:"", data:"" };
+      var t = (texto || "").replace(/ /g, " ");
+      var m = t.match(/(\d{5})[.\s]?(\d{5})\s+(\d{5})[.\s]?(\d{6})\s+(\d{5})[.\s]?(\d{6})\s+(\d)\s+(\d{14})/);
+      if(m){
+        var linha = m[1]+m[2]+m[3]+m[4]+m[5]+m[6]+m[7]+m[8];
+        if(linha.length === 47){
+          var barras = linhaParaBarras(linha);
+          var fator = parseInt(barras.substring(5,9), 10);
+          var centavos = parseInt(barras.substring(9,19), 10);
+          if(centavos > 0) res.valor = formatValor(centavos / 100);
+          if(fator > 0) res.data = dataDoFator(fator);
+        }
+      }
+      if(!res.valor){
+        var mv = t.match(/Valor\s+(?:do\s+)?(?:Documento|Cobrado)[\s:R$]*([\d.]+,\d{2})/i);
+        if(mv) res.valor = mv[1];
+      }
+      if(!res.data){
+        var md = t.match(/Vencimento[\s:]*([0-3]?\d)\/([01]?\d)\/(\d{4})/i);
+        if(md) res.data = md[3] + "-" + pad2(+md[2]) + "-" + pad2(+md[1]);
+      }
+      var mn = t.match(/Benefici[aá]rio[\s:]*([^\d]{3,70})/i) || t.match(/Cedente[\s:]*([^\d]{3,70})/i);
+      if(mn){
+        var nome = mn[1].split(/\b(?:CNPJ|CPF|Ag[eê]ncia|C[oó]digo|Nosso|Endere|Benefici|Pagador|Sacado|Vencimento)\b/i)[0];
+        nome = nome.replace(/[\-–—:.\s]+$/, "").replace(/\s+/g, " ").trim();
+        if(nome.length >= 3) res.nome = nome.slice(0, 60);
+      }
+      return res;
+    }
+    function preencherFormulario(d){
+      if(!form.classList.contains("aberto")){ form.classList.add("aberto"); btnNova.textContent = "Fechar"; }
+      selRep("fRepUnica"); aplicarModo("unica");
+      document.getElementById("fNome").value = d.nome || "";
+      document.getElementById("fData").value = d.data || "";
+      document.getElementById("fValor").value = d.valor || "";
+      setTimeout(function(){ form.scrollIntoView({behavior:"smooth", block:"center"}); }, 40);
+      var faltou = [];
+      if(!d.nome) faltou.push("nome");
+      if(!d.valor) faltou.push("valor");
+      if(!d.data) faltou.push("vencimento");
+      var fim = fila.length ? " Ainda há " + fila.length + " na fila." : "";
+      if(faltou.length) toast("Boleto lido. Confira e complete: " + faltou.join(", ") + ". Escolha empresa ou pessoal." + fim);
+      else toast("Boleto lido. Confira, escolha empresa ou pessoal e toque em Adicionar." + fim);
+    }
+
+    document.getElementById("fAdd").addEventListener("click", function(){
+      if(boletoAtivo && !form.classList.contains("aberto")){
+        if(fila.length){ setTimeout(proximoBoleto, 60); } else { boletoAtivo = false; }
+      }
+    });
+  })();
+
   document.getElementById("fEmpresa").addEventListener("click", function(){ tipoNovo="empresa"; this.classList.add("sel"); document.getElementById("fPessoal").classList.remove("sel"); });
   document.getElementById("fPessoal").addEventListener("click", function(){ tipoNovo="pessoal"; this.classList.add("sel"); document.getElementById("fEmpresa").classList.remove("sel"); });
   var modoNovo = "mensal";
